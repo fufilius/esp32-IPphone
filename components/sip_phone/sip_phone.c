@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "audio_hw.h"
+#include "call_recorder.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -136,6 +137,7 @@ static sip_incoming_call_t s_incoming_call;
 static esp_err_t build_basic_sdp(char *out, size_t out_len);
 static esp_err_t start_ringback(void);
 static void stop_ringback(void);
+static void start_call_recording_from_dialog(void);
 
 esp_err_t sip_phone_init(void)
 {
@@ -1909,6 +1911,7 @@ static void rtp_audio_task(void *arg)
                 ESP_LOGI(TAG, "RTP audio playback started, samples=%u", (unsigned)frame.sample_count);
                 first_frame_played = true;
             }
+            call_recorder_push_audio(CALL_RECORDER_AUDIO_RX, frame.samples, frame.sample_count);
             err = audio_hw_speaker_write(frame.samples, frame.sample_count);
         } else if (first_frame_played) {
             err = audio_hw_speaker_write(silence, silence_count);
@@ -1993,6 +1996,12 @@ static void rtp_tx_task(void *arg)
             samples_read = RTP_TX_PAYLOAD_BYTES;
         }
 
+        int16_t recorded_samples[RTP_TX_PAYLOAD_BYTES] = {0};
+        for (size_t i = 0; i < samples_read; ++i) {
+            recorded_samples[i] = (int16_t)(samples[i] >> RTP_MIC_ATTENUATION_SHIFT);
+        }
+        call_recorder_push_audio(CALL_RECORDER_AUDIO_TX, recorded_samples, samples_read);
+
         packet[0] = 0x80;
         packet[1] = SIP_AUDIO_CODEC_PAYLOAD;
         packet[2] = (uint8_t)(sequence >> 8);
@@ -2007,7 +2016,7 @@ static void rtp_tx_task(void *arg)
         packet[11] = (uint8_t)(ssrc & 0xff);
 
         for (size_t i = 0; i < samples_read; ++i) {
-            packet[RTP_HEADER_BYTES + i] = pcm16_to_alaw((int16_t)(samples[i] >> RTP_MIC_ATTENUATION_SHIFT));
+            packet[RTP_HEADER_BYTES + i] = pcm16_to_alaw(recorded_samples[i]);
         }
 
         const size_t packet_len = RTP_HEADER_BYTES + samples_read;
@@ -2095,6 +2104,7 @@ static void stop_rtp_rx(void)
 {
     s_rtp_rx_running = false;
     s_rtp_tx_running = false;
+    call_recorder_stop();
 }
 
 static void ring_signal_task(void *arg)
@@ -2363,6 +2373,27 @@ static void clear_incoming_call(void)
     memset(&s_incoming_call, 0, sizeof(s_incoming_call));
 }
 
+static void start_call_recording_from_dialog(void)
+{
+    if (!call_recorder_is_ready() || !s_incoming_call.active) {
+        return;
+    }
+
+    char caller[48] = {0};
+    char callee[48] = {0};
+    if (copy_sip_uri_user(s_incoming_call.from, caller, sizeof(caller)) != ESP_OK) {
+        strlcpy(caller, "unknown", sizeof(caller));
+    }
+    if (copy_sip_uri_user(s_incoming_call.to, callee, sizeof(callee)) != ESP_OK) {
+        strlcpy(callee, CONFIG_IPPHONE_SIP_USER, sizeof(callee));
+    }
+
+    esp_err_t err = call_recorder_start(caller, callee);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "call recording not started: %s", esp_err_to_name(err));
+    }
+}
+
 static esp_err_t send_simple_response_for_message(int sock,
                                                   const char *message,
                                                   const struct sockaddr_storage *remote_addr,
@@ -2492,6 +2523,9 @@ static void incoming_sip_task(void *arg)
                 err = start_rtp_tx();
                 if (err != ESP_OK) {
                     ESP_LOGE(TAG, "start RTP TX after ACK failed: %s", esp_err_to_name(err));
+                }
+                if (s_rtp_rx_running && s_rtp_tx_running) {
+                    start_call_recording_from_dialog();
                 }
             }
         } else if (sip_message_starts_with_method(message, "OPTIONS")) {
@@ -2701,6 +2735,12 @@ esp_err_t sip_phone_call_default_extension(void)
             clear_incoming_call();
             s_state = SIP_PHONE_STATE_REGISTERED;
             return err;
+        }
+        if (call_recorder_is_ready()) {
+            esp_err_t rec_err = call_recorder_start(CONFIG_IPPHONE_SIP_USER, CONFIG_IPPHONE_SIP_DEFAULT_EXTENSION);
+            if (rec_err != ESP_OK) {
+                ESP_LOGW(TAG, "call recording not started: %s", esp_err_to_name(rec_err));
+            }
         }
 
         ESP_LOGI(TAG, "default outgoing call established with extension %s", CONFIG_IPPHONE_SIP_DEFAULT_EXTENSION);

@@ -12,6 +12,7 @@ New ESP-IDF project for a SIP phone based on the hardware wiring used by
 - place an outgoing default call by long-pressing the main button;
 - use G.711A/PCMA at 8 kHz for RTP audio in both directions;
 - play local incoming ring and outgoing 425 Hz ringback tones;
+- record each established incoming or outgoing call to microSD as a stereo WAV;
 - use the main button for answer, hang up, outgoing call, and outgoing cancel.
 
 ## PTT-compatible pinout
@@ -69,6 +70,17 @@ authentication. Calls currently use G.711A/PCMA payload type 8 at 8000 Hz.
 
 The default outgoing extension is configured as `1002` in `sdkconfig.defaults`
 and can be changed in menuconfig.
+
+## Call recording
+
+If a FAT-formatted microSD card is present, it is mounted at `/sdcard` during
+startup and each established call is recorded under `/sdcard/calls`.
+
+Recordings are 16-bit PCM stereo WAV files at the configured I2S sample rate.
+The left channel is received RTP audio, and the right channel is microphone
+audio sent over RTP. File names include caller, callee, and the current date
+when system time is available. Without SNTP/RTC time, the firmware uses uptime
+instead.
 
 ## Button behavior
 

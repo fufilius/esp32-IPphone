@@ -1,6 +1,7 @@
 #include "audio_hw.h"
 #include "board.h"
 #include "button.h"
+#include "call_recorder.h"
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -197,6 +198,10 @@ void app_main(void)
     ESP_ERROR_CHECK(button_init());
     ESP_ERROR_CHECK(audio_hw_init());
     ESP_ERROR_CHECK(sip_phone_init());
+    err = call_recorder_init();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "call recorder disabled: %s", esp_err_to_name(err));
+    }
 
     ESP_ERROR_CHECK(audio_hw_play_test_tone());
     start_network_and_sip();
