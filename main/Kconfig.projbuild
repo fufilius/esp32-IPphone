@@ -1,0 +1,127 @@
+menu "ESP32 IP Phone"
+
+    menu "Main button"
+        config IPPHONE_BUTTON_GPIO
+            int "Main button GPIO"
+            default 25
+        config IPPHONE_BUTTON_ACTIVE_LEVEL
+            int "Main button active level"
+            range 0 1
+            default 0
+        config IPPHONE_BUTTON_DEBOUNCE_MS
+            int "Main button debounce time, ms"
+            default 40
+        config IPPHONE_BUTTON_HOLD_MS
+            int "Main button hold time, ms"
+            default 500
+    endmenu
+
+    menu "I2S audio pins"
+        config IPPHONE_I2S_MIC_BCLK
+            int "Microphone I2S SCK/BCLK GPIO"
+            default 18
+        config IPPHONE_I2S_MIC_WS
+            int "Microphone I2S WS GPIO"
+            default 19
+        config IPPHONE_I2S_MIC_DIN
+            int "Microphone I2S data in GPIO"
+            default 23
+        config IPPHONE_I2S_SPK_BCLK
+            int "Speaker amp I2S BCLK GPIO"
+            default 5
+        config IPPHONE_I2S_SPK_WS
+            int "Speaker amp I2S LRC/LRCLK GPIO"
+            default 17
+        config IPPHONE_I2S_SPK_DOUT
+            int "Speaker amp I2S data out GPIO"
+            default 22
+        config IPPHONE_I2S_SAMPLE_RATE
+            int "I2S sample rate"
+            default 8000
+    endmenu
+
+    menu "Display pins"
+        config IPPHONE_I2C_SDA
+            int "I2C SDA GPIO"
+            default 21
+        config IPPHONE_I2C_SCL
+            int "I2C SCL GPIO"
+            default 4
+    endmenu
+
+    menu "Status LED pins"
+        config IPPHONE_LED_GREEN_GPIO
+            int "Green status LED GPIO"
+            default 2
+        config IPPHONE_LED_GREEN_ACTIVE_LEVEL
+            int "Green status LED active level"
+            range 0 1
+            default 1
+        config IPPHONE_LED_RED_GPIO
+            int "Red call/activity LED GPIO"
+            default 16
+        config IPPHONE_LED_RED_ACTIVE_LEVEL
+            int "Red call/activity LED active level"
+            range 0 1
+            default 1
+    endmenu
+
+    menu "Wi-Fi"
+        config IPPHONE_WIFI_SSID
+            string "Wi-Fi SSID"
+            default ""
+        config IPPHONE_WIFI_PASSWORD
+            string "Wi-Fi password"
+            default ""
+        config IPPHONE_WIFI_HOSTNAME
+            string "DHCP hostname"
+            default "esp32-ipphone"
+        config IPPHONE_WIFI_MAX_RETRY
+            int "Wi-Fi reconnect retries"
+            range 1 30
+            default 8
+        config IPPHONE_WIFI_CONNECT_TIMEOUT_MS
+            int "Wi-Fi connection timeout, ms"
+            range 1000 120000
+            default 20000
+    endmenu
+
+    menu "SIP account"
+        config IPPHONE_SIP_SERVER
+            string "SIP server host or IP"
+            default ""
+        config IPPHONE_SIP_PORT
+            int "SIP server port"
+            range 1 65535
+            default 5060
+        config IPPHONE_SIP_USER
+            string "SIP username/extension"
+            default ""
+        config IPPHONE_SIP_PASSWORD
+            string "SIP password"
+            default ""
+        config IPPHONE_SIP_DEFAULT_EXTENSION
+            string "Default outgoing extension"
+            default "1002"
+    endmenu
+
+    menu "microSD SPI pins"
+        config IPPHONE_SD_SCK_GPIO
+            int "microSD SPI SCK GPIO"
+            default 14
+        config IPPHONE_SD_MOSI_GPIO
+            int "microSD SPI MOSI GPIO"
+            default 13
+        config IPPHONE_SD_MISO_GPIO
+            int "microSD SPI MISO GPIO"
+            default 27
+        config IPPHONE_SD_CS_GPIO
+            int "microSD SPI CS GPIO"
+            default 32
+        config IPPHONE_SD_SPI_FREQ_KHZ
+            int "microSD SPI frequency (kHz)"
+            range 400 20000
+            default 400
+    endmenu
+
+endmenu
